@@ -1,0 +1,105 @@
+---
+title: "PA2 Assignment"
+output: html_document
+---
+
+
+>Reproducible Research #2  
+>Second course project for Coursera Reproducible Research  
+>December, 2014  
+
+
+```{r, confMgtDat, cache=TRUE}
+library(dplyr, warn.conflicts=FALSE)
+library(chron)
+#rStudioVer <- as.character(packageVersion("rstudio"))
+#sessInfVect <-data.frame(session = as.character(sessionInfo()))
+#rVer <- data.frame(R.Version())
+#tempFile <- "data/.uname.dat"
+#recFile <- "data/.sysConf.dat"
+if(length(list.dirs("data"))==0) {dir.create("data")}
+#system(paste0("uname -a > ", tempFile))
+#unameDat <- as.vector(read.table(tempFile, comment.char ="",))
+#unlink(tempFile)
+#cat(as.matrix(rVer), 
+#    as.matrix(sessInfVect), 
+#    as.matrix(unameDat), 
+#    rStudioVer, 
+#    Sys.time(),
+#    file=recFile, 
+#    sep = "%\n")
+
+dataURL <- paste0("https://d396qusza40orc.",
+                  "cloudfront.net/repdata%2Fdata%2FStormData.",
+                  "csv.bz2")
+targFileName <- "data/repdata\ data\ StormData.csv.bz2"
+
+if(!file.exists(targFileName)) {            ## If not present, download file
+  download.file(dataURL,                    ## from web and decompress 
+                destfile = targFileName, 
+                method = "curl")
+}
+
+
+
+if(!"stormDat" %in% ls()){                  ## If not already loaded, read-in 
+  stormDat <- read.csv(targFileName)        ## csv data file directly from
+                                            ## bzip archive.
+  colnames(stormDat) <- 
+    tolower(colnames(stormDat))
+
+  stormDat$bgn_date <- gsub(" 0:00:00", "", as.character(stormDat$bgn_date))
+
+  insertMark <- function(hourMinStr){ 
+     return(
+       paste0(
+         strtrim(
+           hourMinStr,2),
+         ":",
+         substr(hourMinStr,3,4)))}
+  stormDat$bgn_time <- insertMark(as.character(stormDat$bgn_time))
+  stormDat$time_zone <- as.character(stormDat$time_zone)
+  
+  conTime <- function(dateRange){
+    return(
+      format(
+        strptime(
+          paste(
+            dateRange$bgn_date,
+            dateRange$bgn_time), 
+          format="%m/%d/%Y %H:%M", 
+          tz = dateRange$time_zone), 
+        format= "%F %X %Z"))
+    }
+
+## spent a lot of time trying to convert the table dates to a single column
+## not generally successful in this form because the implementations that 
+## convert the timezone code are not reliable -- mostly seem geared to long
+## names, and not checked well against modern versions of the time code
+## listings.  WIll check this in for the record, then remove most of this code
+## for later versions.
+
+conTime <- function(dateRange){  
+  paste(dateRange[[1]], dateRange[[2]]) %>%
+  strptime(format="%m/%d/%Y %H:%M", tz = as.character(dateRange[[3]])) %>%
+  format(format= "%F %X %Z") %>%
+  return()
+}
+
+
+  
+  
+#  stormDat$bgn_date <-                      ## Change date to Posix format
+#    as.Date(stormDat$bgn_date,
+#            format="%d/%m/%Y %H:%M:%S")
+}
+rm(dataURL, targFileName, rStudioVer,       ## Explicitly cleanup temp data 
+   rVer, sessInfVect, unameDat, recFile)    ##objects
+   
+```
+
+```{r, echo=FALSE}
+#plot(cars)
+```
+
+

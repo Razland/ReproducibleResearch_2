@@ -3,100 +3,119 @@ title: "PA2 Assignment"
 output: html_document
 ---
 
-
 >Reproducible Research #2  
 >Second course project for Coursera Reproducible Research  
 >December, 2014  
 
-
 ```{r, confMgtDat, cache=TRUE}
 library(dplyr, warn.conflicts=FALSE)
 library(chron)
-#rStudioVer <- as.character(packageVersion("rstudio"))
-#sessInfVect <-data.frame(session = as.character(sessionInfo()))
-#rVer <- data.frame(R.Version())
-#tempFile <- "data/.uname.dat"
-#recFile <- "data/.sysConf.dat"
-if(length(list.dirs("data"))==0) {dir.create("data")}
-#system(paste0("uname -a > ", tempFile))
-#unameDat <- as.vector(read.table(tempFile, comment.char ="",))
-#unlink(tempFile)
-#cat(as.matrix(rVer), 
-#    as.matrix(sessInfVect), 
-#    as.matrix(unameDat), 
-#    rStudioVer, 
-#    Sys.time(),
-#    file=recFile, 
-#    sep = "%\n")
 
-dataURL <- paste0("https://d396qusza40orc.",
-                  "cloudfront.net/repdata%2Fdata%2FStormData.",
-                  "csv.bz2")
-targFileName <- "data/repdata\ data\ StormData.csv.bz2"
+targFileName <-                             ## Target download decompressed file
+  "data/repdata\ data\ StormData.csv.bz2"
 
-if(!file.exists(targFileName)) {            ## If not present, download file
-  download.file(dataURL,                    ## from web and decompress 
-                destfile = targFileName, 
-                method = "curl")
-}
-
-
-
-if(!"stormDat" %in% ls()){                  ## If not already loaded, read-in 
-  stormDat <- read.csv(targFileName)        ## csv data file directly from
-                                            ## bzip archive.
-  colnames(stormDat) <- 
-    tolower(colnames(stormDat))
-
-  stormDat$bgn_date <- gsub(" 0:00:00", "", as.character(stormDat$bgn_date))
-
-  insertMark <- function(hourMinStr){ 
-     return(
-       paste0(
-         strtrim(
-           hourMinStr,2),
-         ":",
-         substr(hourMinStr,3,4)))}
-  stormDat$bgn_time <- insertMark(as.character(stormDat$bgn_time))
-  stormDat$time_zone <- as.character(stormDat$time_zone)
-  
-  conTime <- function(dateRange){
-    return(
-      format(
-        strptime(
-          paste(
-            dateRange$bgn_date,
-            dateRange$bgn_time), 
-          format="%m/%d/%Y %H:%M", 
-          tz = dateRange$time_zone), 
-        format= "%F %X %Z"))
+downLoadData <- function(){
+  if(length(list.dirs("data"))==0){         ## Create data directory if it does
+    dir.create("data")                      ## not exist.
     }
 
-## spent a lot of time trying to convert the table dates to a single column
-## not generally successful in this form because the implementations that 
-## convert the timezone code are not reliable -- mostly seem geared to long
-## names, and not checked well against modern versions of the time code
-## listings.  WIll check this in for the record, then remove most of this code
-## for later versions.
+  dataURL <- paste0(                        ## Name of data file
+    "https://d396qusza40orc.cloudfront.",
+    "net/repdata%2Fdata%2FStormData.csv.bz2")
 
-conTime <- function(dateRange){  
-  paste(dateRange[[1]], dateRange[[2]]) %>%
-  strptime(format="%m/%d/%Y %H:%M", tz = as.character(dateRange[[3]])) %>%
-  format(format= "%F %X %Z") %>%
-  return()
+  if(!file.exists(targFileName)){           ## If not present, download file
+    download.file(dataURL,                  ## from web and decompress 
+                  destfile = targFileName, 
+                  method = "curl")
+    }
+  }
+
+loadStormDat <- function(){
+  downLoadData()                            ## Call to download data.
+  if(!"stormDat" %in% ls()){                ## If not already loaded, read-in
+    stormDat <- read.csv(targFileName)      ## csv data file directly from bzip
+                                            ## archive.
+    chainGsub <-function(dat, pat, repl) {  ## Function to chain string replace-
+      return(gsub(pat, repl, dat))          ## ments for colnames
+    }
+
+    insertMark <- function(hourMinStr){     ## Function to change time stamp 
+      return(paste0(strtrim(                ## data to text, and insert ":".
+                      hourMinStr,2), 
+                      ":", 
+                    substr(
+                      hourMinStr, 3, 4)))
+    }
+  
+    colnames(stormDat) <-                   ## Rename the column headings to
+    colnames(stormDat) %>%                  ## lower case using chaining to
+    tolower() %>%                           ## modify the strings
+    chainGsub("_locati", "_location") %>%
+    chainGsub("latitude_e", "latitude_end") %>%
+    chainGsub("longitude_", "longitude_end") %>%
+    chainGsub("_azi", "_heading") %>%
+    chainGsub("bgn", "begin") %>%
+    chainGsub("evtype", "event_type") %>%
+    chainGsub("endn", "endname") %>%
+    chainGsub("state__", "state_code") %>%
+    chainGsub("stateoffic", "stateoffice") %>%
+    chainGsub("dmg", "damage") %>%
+    chainGsub("propd", "propertyd") %>%
+    chainGsub("wfo", "weatherforecastoffice")
+    colnames(stormDat)[21] <- "fujita_scale"
+      
+    stormDat$begin_date <-                  ## Change to character and remove 
+      gsub(" 0:00:00", "",                  ## superfluous time stamps
+           as.character(stormDat$begin_date))
+    stormDat$end_date <-                    ## Change to character and remove 
+      gsub(" 0:00:00", "",                  ## superfluous time stamps
+           as.character(stormDat$end_date))
+    stormDat$begin_time <-                  ## Add colon and change the time 
+      insertMark(as.character(              ## stamps to text data type.
+        stormDat$begin_time))
+    stormDat$end_time <- 
+      insertMark(as.character(
+        stormDat$end_time))
+    stormDat$time_zone <-                   ## Change time zone abbreviation to
+      toupper(                              ## text format.
+        as.character(stormDat$time_zone))
+  ## Data cleaning data -- Correction of State codes
+    stormDat[stormDat$state == "XX",        ## New York coastal events
+             7] <- "NY"
+    stormDat[stormDat$state == "SL",        ## New York St. Lawrence Seaway
+             7] <- "NY"                     ## events   
+    stormDat[stormDat$state == "PZ",        ## Indicates pacific coast. All refs
+             7] <- "CA"                     ## are to CA
+    stormDat[stormDat$state == "ST",          
+             7] <- "OH"
+    stormDat[stormDat$state=="PK",          ## Pacific + Alaskan coastal areas  
+             7] <- "AK"                     ## 
+    stormDat[stormDat$state=="AK" &         ## Alaska Daylight savings time code
+             stormDat$time_zone=="ADT",     ## to modern standard code.
+             4]<-"AKDT"                     ## Correction of Alaskan Standard  
+    stormDat[stormDat$state=="AK" &         ## time codes to modern standard
+             stormDat$time_zone %in%        ## code.
+             c("AST","AKS"), 4] <- "AKST"  
+    }  
+    return(stormDat)
 }
 
+stormDat <- loadStormDat()                      ## Call to ingest/clean data
 
-  
-  
-#  stormDat$bgn_date <-                      ## Change date to Posix format
-#    as.Date(stormDat$bgn_date,
-#            format="%d/%m/%Y %H:%M:%S")
-}
-rm(dataURL, targFileName, rStudioVer,       ## Explicitly cleanup temp data 
-   rVer, sessInfVect, unameDat, recFile)    ##objects
-   
-```
+rm(targFileName)                            ## Explicitly cleanup temp data 
+```   
+
+1.  _\*Record collection began before Alaska and Hawaii statehood, and time codes
+have changed multiple times since the beginning of the records.  Also several
+typographical errors were noted in time zone and state abbreviations._  
+
+2.  _\*\*State code "AN" may represent "Atlantic Narrows," and should be treated 
+specially in state counts: data with this label represent multiple states, 
+including "DE", "NJ", "NY", "VA", "MD", "NC".  State code "LE" is used for Lake 
+Erie multitstate events, including "OH", "NY", "MI", "PA". State code "GM" used 
+for mulitstate events around the Gulf of Mexico_  
+      
+
 
 ```{r, echo=FALSE}
 #plot(cars)

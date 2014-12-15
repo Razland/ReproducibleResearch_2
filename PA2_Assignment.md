@@ -1,11 +1,4 @@
----
-title: Some Effects of Historic Weather Events on Public Health
-output:
-  html_document: 
-    fig_caption: yes
-    keep_md: yes
-  pdf_document: default
----   
+# Some Effects of Historic Weather Events on Public Health
 
 >PA2 Assignment   
 >Reproducible Research #2   
@@ -28,7 +21,8 @@ Data is first conditionally (if not present) downloaded from the internet
 [source](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.
 csv.bz2 "dataURL")
 
-```{r, downLoadData, cache=TRUE}
+
+```r
 library(dplyr, warn.conflicts=FALSE)
 library(knitr)
 library(stringr)
@@ -55,7 +49,8 @@ downLoadData <- function(){                 ## Function downloads data if needed
 Once present on the local system, the file is read into an R data structure 
 "stormDat".
 
-```{r readInData, cache=TRUE}
+
+```r
 loadStormDat <- function(){                 ## Function reads csv file.
   downLoadData()                            ## Call to download data function.
   if(!"stormDat" %in% ls()){                ## If not already loaded, read-in
@@ -64,28 +59,76 @@ loadStormDat <- function(){                 ## Function reads csv file.
   }
 }
 stormDat <- loadStormDat()
-```  
+```
 The data set, read into R, is composed of almost 1 million entries with 37 
 variables, as shown:
 
-```{r showDataDim, comment=NA}
+
+```r
 dim(stormDat)                               ## Show dimensions of the data
+```
+
+```
+[1] 902297     37
 ```
 
 Data variable names do not all clearly describe the data contained within the 
 variable, nor do they seem to follow any standard convention in composition:
 
-```{r showDataHeadings, comment=NA}
+
+```r
 colnames(stormDat)                          ## Show the variable names of data
+```
+
+```
+ [1] "STATE__"    "BGN_DATE"   "BGN_TIME"   "TIME_ZONE"  "COUNTY"    
+ [6] "COUNTYNAME" "STATE"      "EVTYPE"     "BGN_RANGE"  "BGN_AZI"   
+[11] "BGN_LOCATI" "END_DATE"   "END_TIME"   "COUNTY_END" "COUNTYENDN"
+[16] "END_RANGE"  "END_AZI"    "END_LOCATI" "LENGTH"     "WIDTH"     
+[21] "F"          "MAG"        "FATALITIES" "INJURIES"   "PROPDMG"   
+[26] "PROPDMGEXP" "CROPDMG"    "CROPDMGEXP" "WFO"        "STATEOFFIC"
+[31] "ZONENAMES"  "LATITUDE"   "LONGITUDE"  "LATITUDE_E" "LONGITUDE_"
+[36] "REMARKS"    "REFNUM"    
 ```
 
 In addition, some of the data seem to be formatted and composed in a manner not
 conducive to easy use or analysis.  
 
-```{r displaySampleData, comment=NA}
+
+```r
 head(stormDat, 3)                           ## First 3 rows of data 
+```
+
+```
+  STATE__          BGN_DATE BGN_TIME TIME_ZONE COUNTY COUNTYNAME STATE
+1       1 4/18/1950 0:00:00     0130       CST     97     MOBILE    AL
+2       1 4/18/1950 0:00:00     0145       CST      3    BALDWIN    AL
+3       1 2/20/1951 0:00:00     1600       CST     57    FAYETTE    AL
+   EVTYPE BGN_RANGE BGN_AZI BGN_LOCATI END_DATE END_TIME COUNTY_END
+1 TORNADO         0                                               0
+2 TORNADO         0                                               0
+3 TORNADO         0                                               0
+  COUNTYENDN END_RANGE END_AZI END_LOCATI LENGTH WIDTH F MAG FATALITIES
+1         NA         0                      14.0   100 3   0          0
+2         NA         0                       2.0   150 2   0          0
+3         NA         0                       0.1   123 2   0          0
+  INJURIES PROPDMG PROPDMGEXP CROPDMG CROPDMGEXP WFO STATEOFFIC ZONENAMES
+1       15    25.0          K       0                                    
+2        0     2.5          K       0                                    
+3        2    25.0          K       0                                    
+  LATITUDE LONGITUDE LATITUDE_E LONGITUDE_ REMARKS REFNUM
+1     3040      8812       3051       8806              1
+2     3042      8755          0          0              2
+3     3340      8742          0          0              3
+```
+
+```r
 range(stormDat[,37])                        ## Max, min of range variable
-```    
+```
+
+```
+[1]      1 902297
+```
 ###Cleaning and formatting data:       
 
 We define a set of functions to clean up some of the data, including conversion
@@ -97,7 +140,8 @@ table, and is discarded.  See the NWS data
 csvfiles/Storm-Data-Export-Format.docx "Data Format") and the additional data 
 cleaning remarks, below.
 
-```{r cleanUpData, cache=TRUE}
+
+```r
 require(dplyr)
 
 chainGsub <-function(dat, pat, repl) {      ## Subfunction to chain string
@@ -194,7 +238,7 @@ cleanStormDat <- function(stormDat){        ## Function makes data "tidier."
 }                                           ## to plain text.
 
 stormDat <- cleanStormDat(stormDat)         ## Call to clean data function
-```   
+```
 data cleanup/tidy data notes:   
 1.  _\*State codes sometimes include regional office abbreviations that 
 often affect multiple states, and should be treated specially in state counts:   
@@ -271,10 +315,25 @@ variable) are most harmful with respect to population health?_
 In our preliminary cleaning o data, we have renamed the EVTYPE variable to 
 "eventtype." We initially explore the data stored within the variable:
 
-```{r displayEventType, cache=TRUE, comment=NA}
+
+```r
 format(stormDat[                            ## Random sample of 10 observations
                 sample(1:length(stormDat$eventtype),10), 6:8], 
        justify="right")
+```
+
+```
+       countyname state         eventtype
+179648 WASHINGTON    WI         TSTM WIND
+199212   RICHLAND    IL       FLASH FLOOD
+139485   ANDERSON    SC              HAIL
+827702    NOXUBEE    MS THUNDERSTORM WIND
+676797    BECKHAM    OK              HAIL
+514854    STANLEY    SD              HAIL
+439188      TEXAS    OK              HAIL
+349800  CRAIGHEAD    AR         TSTM WIND
+891130  HAMPSHIRE    WV              HAIL
+596129      FALLS    TX              HAIL
 ```
 
 In addition to the state abbreviation and date/time issues at least partially 
@@ -294,7 +353,8 @@ Additionally, data entered as summaries of multistate, multiple event types
 (e.g. TX and OK Tornado and thunderstorm events) are cross-referenced to the 
 remarks variable, where the actual data was entered.
 
-```{r convertEventType, cache=TRUE, comment=NA}          
+
+```r
 convertEvent <- function(dataVect){        # Function parses input string (in-    
   as.character(dataVect) %>%               # tended for stormDat$eventtype) and 
   toupper() %>%                            # makes specific changes to partly
@@ -579,6 +639,10 @@ print(                                      ## Reduction in event types through
          " event type/names" ))
 ```
 
+```
+[1] "Index reduced by 539 event type/names"
+```
+
 This code (~265 lines) results in consolidation of 'eventtype' unique entry 
 types by roughly half.  While this is too large an index (an order of magnitude 
 greater) than the standard data definition, it should cover the majority of the
@@ -588,13 +652,38 @@ Rather than discarding the original event type variable, the vector of modified
 eventtype strings is inserted into the stormDat table as new variable 
 'eventclass' which will be used, where applicable, for these analyses.
 
-```{r insertEventClass, cache=TRUE, comment=NA}
+
+```r
 stormDat <- (mutate(                        ## Inserts new event classification
                stormDat,                    ## vector as variable in position 9
                eventclass = eventVect))[,c(1:8,37,9:36)]
 print(stormDat[                             ## Print some of the new data
                sample(1:length(eventVect),  ## showing substitution/inter-
                20), c(6:9)])                ## pretation
+```
+
+```
+        countyname state         eventtype        eventclass
+22370     MUSCOGEE    GA         TSTM WIND THUNDERSTORM WIND
+520855   DICKENSON    VA         TSTM WIND THUNDERSTORM WIND
+540180       WAYNE    MI              HAIL              HAIL
+462484   ST. CLAIR    MI         TSTM WIND THUNDERSTORM WIND
+420687     ELKHART    IN              HAIL              HAIL
+33187    WHITESIDE    IL         TSTM WIND THUNDERSTORM WIND
+408922    JIM HOGG    TX              HAIL              HAIL
+425792      PAWNEE    KS              HAIL              HAIL
+491277    SPALDING    GA         TSTM WIND THUNDERSTORM WIND
+870163    HAMILTON    TN THUNDERSTORM WIND THUNDERSTORM WIND
+35195       PORTER    IN         TSTM WIND THUNDERSTORM WIND
+606074  CAZ096>097    CA      WINTER STORM      WINTER STORM
+825823       WOLFE    KY THUNDERSTORM WIND THUNDERSTORM WIND
+105422    CHENANGO    NY         TSTM WIND THUNDERSTORM WIND
+703440 BUENA VISTA    IA              HAIL              HAIL
+539584   FREDERICK    MD         TSTM WIND THUNDERSTORM WIND
+859857  WASHINGTON    TN              HAIL              HAIL
+408414        RUSK    TX         TSTM WIND THUNDERSTORM WIND
+811918    KENNEBEC    ME              HAIL              HAIL
+680278       LYMAN    SD      FUNNEL CLOUD      FUNNEL CLOUD
 ```
 The assignment question asks which types of events are most harmful with respect
 to public health.  
@@ -609,7 +698,8 @@ We use the "fatalities" and "injuries" variables to plot effects of weather on
 public health, discarding observations where the number of fatalities or 
 injuries is less than the mean:
 
-```{r plotInj, cache=TRUE, comment=NA}
+
+```r
 sumInj <- data.frame(summarize(             ## Select for injury data grouped 
                        group_by(stormDat,   ## and sum
                                 eventclass),
@@ -621,12 +711,25 @@ sumInj <- sumInj[order(sumInj$injuries,     ## Reorder by injuries high-to-low
 meanInj <-                                  ## Get the mean number of injuries
   mean(sumInj[sumInj$injuries >= 1,2])
 head(sumInj, 3)
+```
+
+```
+           eventclass injuries
+399           TORNADO    91407
+384 THUNDERSTORM WIND     9369
+92              FLOOD     6873
+```
+
+```r
 plot(sumInj[sumInj$injuries >= meanInj, 2], ## Plot injuries
      type = "l",  sub = "since 1951", ylab = "Injuries", 
      xlab = "Weather Event Types", main = "Injuries by Weather Event")
 ```
 
-```{r plotFatal, cache=TRUE, comment=NA}
+![plot of chunk plotInj](./PA2_Assignment_files/figure-html/plotInj.png) 
+
+
+```r
 sumFatal <- data.frame(summarize(           ## Select total number of fatalities
                          group_by(stormDat, ## by group
                                   eventclass), 
@@ -638,16 +741,29 @@ sumFatal <-                                 ## Reorder the data with the highest
                   decreasing = TRUE),]
 meanFatal <- mean(sumFatal[sumFatal$fatalities >= 1, 2])
 head(sumFatal, 3)
+```
+
+```
+      eventclass fatalities
+399      TORNADO       5636
+77  EXTREME HEAT       2016
+86   FLASH FLOOD       1035
+```
+
+```r
 plot(sumFatal[sumFatal$fatalities >= meanFatal, 2], 
      type = "l", sub = "since 1951", ylab = "Fatalities", 
      xlab = "Weather Event Types", main = "Fatalities by Weather Event")
-```    
+```
+
+![plot of chunk plotFatal](./PA2_Assignment_files/figure-html/plotFatal.png) 
 
 As stated above, we suspect the focus of collections on tornadoes, prior to 
 1992, has probably skewed the results.  We recompute to determine the effect of
 the skew by looking only at data recorded after that date.
 
-```{r plotInj92, cache=TRUE, comment=NA}
+
+```r
 sumInj <- 
   data.frame(summarize(
                group_by(stormDat[stormDat$begindate >=
@@ -660,13 +776,26 @@ sumInj <- sumInj[order(sumInj$injuries,
                        decreasing=TRUE),]
 meanInj <- mean(sumInj[sumInj$injuries >= 1,2])
 head(sumInj, 3)
+```
+
+```
+      eventclass injuries
+399      TORNADO    24694
+92         FLOOD     6873
+77  EXTREME HEAT     6680
+```
+
+```r
 plot(sumInj[sumInj$injuries >= meanInj,2], 
      type = "l", ylab = "Injuries", sub = "since 1992",
      xlab = "Weather Event Types",
      main = "Injuries by Weather Event")
 ```
 
-```{r plotFatal92, cache=TRUE, comment=NA}
+![plot of chunk plotInj92](./PA2_Assignment_files/figure-html/plotInj92.png) 
+
+
+```r
 sumFatal <- 
   data.frame(summarize(
                group_by(stormDat[stormDat$begindate >=
@@ -681,16 +810,29 @@ meanFatal <-
   mean(sumFatal[sumFatal$fatalities >= 1, 2])
 
 head(sumFatal, 3)
+```
 
+```
+      eventclass fatalities
+77  EXTREME HEAT       2016
+399      TORNADO       1663
+86   FLASH FLOOD       1035
+```
+
+```r
 plot(sumFatal[sumFatal$fatalities >= meanFatal,2], 
      type = "l", ylab = "Fatalities", sub = "since 1992", 
      xlab = "Weather Event Types", 
      main = "Fatalities by Weather Event")
+```
 
+![plot of chunk plotFatal92](./PA2_Assignment_files/figure-html/plotFatal92.png) 
+
+```r
 rm(sumFatal, meanFatal, sumInj, meanInj,    ## Explicitly cleanup temp data 
    convertEvent, targFileName, loadStormDat, 
    downLoadData, insertMark, cleanStormDat)
-```    
+```
 
 ####Conclusions for question #1.
 
@@ -723,10 +865,24 @@ which, when not blank or 0, is usually a real number with no more than two
 decimal places of precision, and no more than 5 digits.  Encoding of the 
 exponent variable is not straight forward:    
 
-```{r rangeExponents, cache=TRUE, comment=NA}
+
+```r
 unique(stormDat$propertydamageexp)          ## Show property exponent variable
+```
+
+```
+ [1] K M   B m + 0 5 6 ? 4 2 3 h 7 H - 1 8
+Levels:  - ? + 0 1 2 3 4 5 6 7 8 B h H K m M
+```
+
+```r
 unique(stormDat$cropdamageexp)              ## Show the crop exponent variable
-```    
+```
+
+```
+[1]   M K m B ? 0 k 2
+Levels:  ? 0 2 B k K m M
+```
 Per the documentation from the NWS web site, letters h, k, m, b (upper and 
 lower case) represent hundreds, thousands, millions, and billions, 
 respectively. Factors "-" and "+" are interpreted to mean "less than" and
@@ -736,7 +892,8 @@ exponents represented as characters are 2, 3, 6, 9 (equivalent to H, K, M, B).
 Numeric values greater than 1 will be evaluated as powers of ten (10^exp) * the 
 respective damage variable data.    
 
-```{r computeExp, cache=TRUE, comment=NA}
+
+```r
 computeExp <- function(expVect) {           ## Function replaces exponent values
   as.character(expVect) %>%                 ## with useful numeric equivalents
   toupper() %>%                             ## and strips out unused symbols and
@@ -756,14 +913,27 @@ stormDat$cropdamageexp <-
 stormDat$propertydamageexp <- 
   as.factor(computeExp(stormDat$propertydamageexp))
 unique(stormDat$propertydamageexp)          ## Show property exponent variable
-unique(stormDat$cropdamageexp)              ## Show the crop exponent variable
+```
 
-```    
+```
+[1] 3 6   9 5 4 2 7 8
+Levels:  2 3 4 5 6 7 8 9
+```
+
+```r
+unique(stormDat$cropdamageexp)              ## Show the crop exponent variable
+```
+
+```
+[1]   6 3 9 2
+Levels:  2 3 6 9
+```
 
 We compute property and crop damage against the top event types, and report the
 three highest.
 
-```{r compPropDamage, cache=TRUE, comment=NA}
+
+```r
 costDat <- data.frame(eventclass = stormDat$eventclass,
                       propDamage = (as.numeric(stormDat$propertydamage) *
                                    (10^as.numeric(stormDat$propertydamageexp))))
@@ -779,16 +949,29 @@ costDat$propDamage <- formatC(costDat$propDamage/(10^9),
                               digits=2, 
                               format="f")
 head(costDat, 3)
+```
 
+```
+Source: local data frame [3 x 2]
+
+                        eventclass propDamage
+1 TORNADOES THUNDERSTORM WIND HAIL       1.60
+2        HEAVY RAIN SEVERE WEATHER       1.25
+3                HURRICANE TYPHOON       0.30
+```
+
+```r
 plot(costDat[1:6, 2],
      type = "l" , 
      ylab = "Property Damage Cost ($Billions)",
      xlab = "Weather Event Types", 
      main = "Property Damage by Weather Event")
-
 ```
 
-```{r compCropDamage, cache=TRUE, comment=NA}
+![plot of chunk compPropDamage](./PA2_Assignment_files/figure-html/compPropDamage.png) 
+
+
+```r
 costDat <- data.frame(eventclass = stormDat$eventclass,
                       cropDamage = (as.numeric(stormDat$cropdamage) *
                                    (10^as.numeric(stormDat$cropdamageexp))))
@@ -804,14 +987,26 @@ costDat$cropDamage <- formatC(costDat$cropDamage/(10^3),
                               digits=2, 
                               format="f")
 head(costDat, 3)
+```
 
+```
+Source: local data frame [3 x 2]
+
+               eventclass cropDamage
+1 COLD AND WET CONDITIONS     660.00
+2    DUST STORM HIGH WIND     500.00
+3             FOREST FIRE     500.00
+```
+
+```r
 plot(costDat[1:6, 2],
      type = "l" ,
      ylab = "Crop Damage Cost ($Thousands)",
      xlab = "Weather Event Types", 
      main = "Crop Damage by Weather Event")
-
 ```
+
+![plot of chunk compCropDamage](./PA2_Assignment_files/figure-html/compCropDamage.png) 
 
 Since the average per type of event is taken, unlike the analysis of 
 question #1, we do not for observations since 1992.
@@ -836,8 +1031,6 @@ greatest amount of damage.
 The events causing the greatest crop damage maximum are also a combination type
 event, "cold and wet conditions" causing an average of $660 thousand.  Tied for 
 second place are "dust storm/high wind", and "forest fires" at $500 thousand. 
-
-###Overall Conclusions    
 
 
 ________________________________________________________________________________

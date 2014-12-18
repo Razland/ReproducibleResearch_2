@@ -1,11 +1,11 @@
-# Some Health and Economic Effects of Historic Weather Events
+# Some Health and Economic Impacts of Historic Weather Events
 
 >PA2 Assignment   
 >Reproducible Research #2   
 >(Second course project for Coursera Reproducible Research)   
 >December, 2014   
 
-###Synopsis    
+### Synopsis    
 
 The U. S. National Weather Service (NWS) maintains a weather event database that 
 is available to the public through the internet.  For this project, data 
@@ -15,7 +15,7 @@ read in from the provided files, then cleaned, tidied, and formatted prior to
 calculations.  Two assignment questions are addressed through data analysis, and 
 separate conclusions are provided for each.
 
-####Data Processing: Obtaining and reading in the data
+### Data Processing: Obtaining and Reading in Data
 
 Data is first conditionally (if not present) downloaded from the internet
 [source](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.
@@ -28,7 +28,8 @@ library(knitr)
 library(stringr)
 library(ggplot2)
 library(grid)
-source("multiplot.R")
+library(scales)
+
 targFileName <-                             ## Target-download compressed file
   "data/repdata\ data\ StormData.csv.bz2"
 if(length(list.dirs("./figures")) == 0){    ## Create a target directory for any 
@@ -45,6 +46,51 @@ downLoadData <- function(){                 ## Function downloads data if needed
     download.file(dataURL,                  ## from web and decompress 
                   destfile = targFileName, 
                   method = "curl")
+  }
+}
+
+# Multiple plot function
+#
+# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot 
+# objects)
+# - cols:   Number of columns in layout
+# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+#
+# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+# then plot 1 will go in the upper left, 2 will go in the upper right, and
+# 3 will go all the way across the bottom.
+#
+# Credit: this function obtained from R Cookbook example at 
+# http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_%28ggplot2%29/
+#
+multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
+  require(grid, quietly=TRUE)
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  numPlots = length(plots)
+  # If layout is NULL, then use 'cols' to determine layout
+  if (is.null(layout)) {
+    # Make the panel
+    # ncol: Number of columns of plots
+    # nrow: Number of rows needed, calculated from # of cols
+    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                     ncol = cols, nrow = ceiling(numPlots/cols))
+  }
+  if (numPlots==1) {
+    print(plots[[1]])
+  } else {
+    # Set up the page
+    grid.newpage()
+    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
+    
+    # Make each plot, in the correct location
+    for (i in 1:numPlots) {
+      # Get the i,j matrix positions of the regions that contain this subplot
+      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+      
+      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+    }
   }
 }
 ```
@@ -133,7 +179,7 @@ range(stormDat[, 37])                       ## Max, min of range variable
 [1]      1 902297
 ```
 
-###Data Processing: cleaning and formatting data       
+#### Initial Cleaning and Formatting Data       
 
 We define a set of functions to clean up some of the data, including conversion
 of factors (mostly into text format) replacing some NA elements, formatting date
@@ -198,7 +244,7 @@ cleanStormDat <- function(stormDat){        ## Function makes data "tidier."
     insertMark(stormDat[str_length(
                           stormDat$endtime) == 4, 
                         13])
-                                            ## note1: *Correcting State codes
+                                            ## Correcting State codes
   stormDat[stormDat$state == "LO", 7] <-    ## New York Lake Ontario events 
     "NY"                               
   stormDat[stormDat$state == "PM", 7] <-    ## Guam coastal area events  
@@ -215,9 +261,9 @@ cleanStormDat <- function(stormDat){        ## Function makes data "tidier."
     "NY"                               
   stormDat$state <-                         ## Recast state abbreviation back to 
     as.factor(stormDat$state)               ## factor.
-  stormDat$timezone <-                      ## note2: **Change time zone 
-    toupper(                                ## abbreviation to upper case, and 
-      as.character(stormDat$timezone))      ## temporarily to plain text format.
+  stormDat$timezone <-                      ## Change time zone abbreviation to
+    toupper(                                ## upper case, and temporarily to 
+      as.character(stormDat$timezone))      ## plain text format.
   stormDat[stormDat$state == "AK" &         ## Correction of Alaska Daylight 
            stormDat$timezone == "ADT",      ## Savings time code to modern 
            4] <- "AKDT"                     ## standard code.                        
@@ -265,23 +311,23 @@ cleanStormDat <- function(stormDat){        ## Function makes data "tidier."
 stormDat <- cleanStormDat(stormDat)         ## Call to clean data function
 ```
 
-data cleanup/tidy data notes:   
-1.  _\*State codes sometimes include regional office abbreviations that
-often affect multiple states, and should be treated specially in state counts:   
- a. Code "AN" represents "Atlantic North," data with this label represent 
-    multiple states, including at least "DE" , "NJ" , "NY" , "VA" , "MD" , "NC".   
- b. State code "LE" is used for Lake Erie multistate events, including "OH", 
-   "NY" , "MI" , "PA".   
- c. State code "GM" is used for mulitstate, oceanic events occuring in states 
-   around the Gulf of Mexico.   
- d. Code "LS"" indicates events occurring around Lake Superior, usually 
-   affecting both "MI" and "WI".   
- e. Code "LH" represents Lake Huron, and affects the same states as "LS"_   
-
-2.  _\*\*Record collection began before Alaska and Hawaii statehood, and 
-time zone standard codes have changed multiple times since the beginning of
-record  keeping.  Several typographical errors are noted in the original data
-set time zone and state abbreviations._   
+Data cleanup/tidy data notes:   
+-  _State codes sometimes include regional office abbreviations that often
+affect multiple states, and should be treated specially in state counts._   
+    --  _Code "AN" represents "Atlantic North," data with this label represent 
+        multiple states, including at least "DE" , "NJ" , "NY" , "VA" , "MD" ,
+        "NC"._    
+    --  _State code "LE" is used for Lake Erie multistate events, including 
+    "OH", "NY" , "MI" , "PA"._   
+    --  _State code "GM" is used for mulitstate, oceanic events occuring in 
+        states around the Gulf of Mexico._   
+    --  _Code "LS"" indicates events occurring around Lake Superior, usually 
+        affecting both "MI" and "WI"._
+    --  _Code "LH" represents Lake Huron, and affects the same states as "LS"._  
+-  _Record collection began before Alaska and Hawaii statehood, and time zone 
+standard codes have changed multiple times since the beginning of record
+keeping.  Several typographical errors are noted in the original data set 
+time zone and state abbreviations._ 
 
 From the NWS [supplemental 
 information](http://www.ncdc.noaa.gov/stormevents/details.jsp?type=supplemental 
@@ -332,9 +378,10 @@ The reader should consider that these data, without a great deal more effort to
 screen, clean, and "tidy" the information, are useful only to the extent of 
 providing estimates, and not precise results.    
 
-###Assignment Questions:   
+## Assignment Questions:   
 
-####Question \#1   
+### Question 1 Analysis    
+
 1.  _Across the United States, which types of events (as indicated in the EVTYPE
 variable) are most harmful with respect to population health?_   
 
@@ -349,37 +396,42 @@ format(stormDat[                            ## Random sample of 10 observations
 ```
 
 ```
-       countyname state eventtype
-596135    BASTROP    TX      HAIL
-293122     WINONA    MN      HAIL
-22370    MUSCOGEE    GA TSTM WIND
-520854       WISE    VA TSTM WIND
-540178  WASHTENAW    MI      HAIL
-462483  ST. CLAIR    MI TSTM WIND
-420686    ELKHART    IN      HAIL
-33187   WHITESIDE    IL TSTM WIND
-408921 WILLIAMSON    TX      HAIL
-425792     PAWNEE    KS      HAIL
+       countyname state   eventtype
+460057     TAYLOR    KY FLASH FLOOD
+58486    MARSHALL    KY   TSTM WIND
+420890    JOHNSON    IN        HAIL
+545967    WHEELER    NE        HAIL
+85935        CASS    MO   TSTM WIND
+554619    DOUGLAS    SD   TSTM WIND
+164606      SMITH    TX     TORNADO
+862831     COLLIN    TX        HAIL
+813757  CHRISTIAN    MO        HAIL
+616455    JACKSON    KS   TSTM WIND
 ```
 
-#####Additional Data Processing:    
+#### Additional Data Processing    
 
 In addition to the state abbreviation and date/time issues at least partially 
-addressed above, the event type field has muchduplicate data with different 
-formats, different levels of information, duplicate data, incorrect data (e.g. 
-Forest Fires are reported, yet not considered a weather event), and data that 
-should be entered in other columns of the data table.    
+addressed above, the event type field contains much duplicate data in various 
+text formats, different levels of information, duplicate data, incorrect data 
+(e.g. Forest Fires are reported, yet not considered a weather event), and data 
+that should be entered in other columns of the data table.    
 
-We will extend modifications to a few additional cleaning changes in the event
-type variable by 
-eliminating punctuation markings, changing text to upper case, and eliminating a 
-few of the most obvious spelling errors. We will also take the opportunity to 
-classify a few of the variable entries to the current standard, but this work is 
-to be considered neither precise nor complete.    
+We extend modifications to a few additional cleaning changes in the event
+type variable by eliminating punctuation markings, changing text to upper case, 
+and eliminating a few of the most obvious spelling and data entry errors. We 
+also take the opportunity to classify a few of the variable entries to the 
+current standard, but this work is to be considered neither precise nor 
+complete. 
 
 Additionally, data entered as summaries of multistate, multiple event types 
 (e.g. TX and OK Tornado and thunderstorm events) are cross-referenced to the 
-remarks variable, where the actual data was entered.
+remarks variable, where the actual event classification data has been listed. An
+obvious improvement could be had by developing code to parse the remarks 
+variable for types or combinations of events -- however, considering the 
+extensive coding needed for correcting most event type data entries, we consider
+additional effort out-of-scope unless the "SEE REMARKS" cross-reference is found
+to corr significant numbers of deaths or injuries.   
 
 
 ```r
@@ -423,12 +475,12 @@ convertEvent <- function(dataVect){         ## Function parses input string (in-
   chainGsub("DUST DEVIL" , "TORNADO" ) %>%
   chainGsub("DUSTSTORM" , "DUST STORM") %>%
   chainGsub("DRIZZLE AND FREEZING" , "DRIZZLE") %>%
-  chainGsub("DRYNESS" , "DROUGHT") %>%   ###
+  chainGsub("DRYNESS" , "DROUGHT") %>%   
   chainGsub("DRY CONDITIONS" , "DROUGHT") %>%
   chainGsub("DRY PATTERN" , "DROUGHT") %>%
   chainGsub("DRY SPELL" , "DROUGHT") %>%
   chainGsub("DRY WEATHER" , "DROUGHT") %>%
-  chainGsub("^DRY$" , "DROUGHT") %>% ##
+  chainGsub("^DRY$" , "DROUGHT") %>% 
   chainGsub(" DR$" , " DROUGHT") %>%
   chainGsub("DUS$" , "DUST") %>%
   chainGsub("EROSIN" , "EROSION") %>%
@@ -678,7 +730,7 @@ observations in this data set well enough to estimate results.
 
 Rather than discarding the original event type variable, the vector of modified
 eventtype strings is inserted into the stormDat table as new variable 
-'eventclass' which will be used, where applicable, for these analyses.
+'eventclass' which will be used for these analyses where applicable.
 
 
 ```r
@@ -693,97 +745,74 @@ print(stormDat[sample(1:length(eventVect),  ## Print some of new data showing
 ```
 
 ```
-             countyname state                eventtype
-491281           GREENE    GA                LIGHTNING
-870171             KNOX    TN        THUNDERSTORM WIND
-35195            PORTER    IN                TSTM WIND
-606079            KINGS    CA               HEAVY RAIN
-825830           GMZ830    GM MARINE THUNDERSTORM WIND
-105423         SARATOGA    NY                TSTM WIND
-703446           WRIGHT    IA              FLASH FLOOD
-539589          HARFORD    MD              FLASH FLOOD
-859865           MCMINN    TN                     HAIL
-408418      NACOGDOCHES    TX                     HAIL
-811925         KENNEBEC    ME        THUNDERSTORM WIND
-680284            BRULE    SD                     HAIL
-68632           HAMPDEN    MA                  TORNADO
-71821         HILLSDALE    MI                     HAIL
-598539             KNOX    TX                     HAIL
-647355        JEFFERSON    AL                     HAIL
-130703           HARPER    OK                     HAIL
-666033 MSZ001>017 - 020    MS           EXCESSIVE HEAT
-120896         OKLAHOMA    OK                     HAIL
-154771             GRAY    TX                TSTM WIND
-                     eventclass
-491281                LIGHTNING
-870171        THUNDERSTORM WIND
-35195         THUNDERSTORM WIND
-606079               HEAVY RAIN
-825830 MARINE THUNDERSTORM WIND
-105423        THUNDERSTORM WIND
-703446              FLASH FLOOD
-539589              FLASH FLOOD
-859865                     HAIL
-408418                     HAIL
-811925        THUNDERSTORM WIND
-680284                     HAIL
-68632                   TORNADO
-71821                      HAIL
-598539                     HAIL
-647355                     HAIL
-130703                     HAIL
-666033             EXTREME HEAT
-120896                     HAIL
-154771        THUNDERSTORM WIND
+                countyname state         eventtype        eventclass
+541589           FARIBAULT    MN         TSTM WIND THUNDERSTORM WIND
+816116              VALLEY    NE       FLASH FLOOD       FLASH FLOOD
+189590             YAVAPAI    AZ              HAIL              HAIL
+870301           CHRISTIAN    MO              HAIL              HAIL
+696601           ST. JOHNS    FL              HAIL              HAIL
+766728             HOUSTON    AL THUNDERSTORM WIND THUNDERSTORM WIND
+584530               SARPY    NE         TSTM WIND THUNDERSTORM WIND
+629126          LIVINGSTON    NY         TSTM WIND THUNDERSTORM WIND
+585488              CUMING    NE              HAIL              HAIL
+312871             TRINITY    CA              HAIL              HAIL
+599562 CHARLOTTESVILLE (C)    VA         TSTM WIND THUNDERSTORM WIND
+59092                BOYLE    KY         TSTM WIND THUNDERSTORM WIND
+367720               LUCAS    OH              HAIL              HAIL
+453299           CHATTOOGA    GA         TSTM WIND THUNDERSTORM WIND
+573563            BUCHANAN    IA         TSTM WIND THUNDERSTORM WIND
+725188              ORANGE    NY              HAIL              HAIL
+133352           MCCURTAIN    OK         TSTM WIND THUNDERSTORM WIND
+692283            MARICOPA    AZ THUNDERSTORM WIND THUNDERSTORM WIND
+502082             GRENADA    MS       FLASH FLOOD       FLASH FLOOD
+574178               CLOUD    KS              HAIL              HAIL
 ```
 
 The assignment question asks which types of events are most harmful with respect
-to public health.  
-
-The data include the number of fatalaties and injuries caused by many weather 
-events.  Since the data set contains many death and injury entries that are 
-blank or zero, it can be assumed that most events cause few or no injuries or 
-death.  We will report the three event types that cause the most harm in both 
-categories.
+to public health. The data include the number of fatalaties and injuries caused 
+by many weather events.  Since the data set contains many death and injury 
+entries that are blank or zero, it can be assumed that most events cause few or 
+no injuries or death.  We will report the three event types that cause the most 
+harm in both categories.
 
 We use the "fatalities" and "injuries" variables to plot effects of weather on 
 public health, discarding observations where the number of fatalities or 
 injuries is less than the mean.
 
 As stated above, we suspect the focus of collections on tornadoes, prior to 
-1992, has probably skewed the results.  We also recompute to determine the 
-effect of any skew by looking only at data recorded after that date.
-    
+1992, has skewed the results to favor these events.  We also recompute to 
+determine the effect of any skew by looking only at data recorded after that 
+date.    
 
 
 ```r
-##require(dplyr)
-sumInj <- 
-  data.frame(eventclass = unique(
+sumInj <-                                   ## Small data frame contains events 
+  data.frame(eventclass = unique(           ##  by injuries
                             stormDat[stormDat$injuries >= 1,
                                      ]$eventclass), 
-             injuries = 0)
-for(evCl in sumInj$eventclass){
-  sumInj[sumInj$eventclass == evCl,
-         ]$injuries <- 
-    sum(stormDat[stormDat$eventclass == evCl,
-                 ]$injuries) 
-}
-sumInj <- sumInj[order(sumInj$injuries, 
-                 decreasing = TRUE), ][1:6, ]
-P1 <- ggplot(sumInj, 
-             aes(x = eventclass, 
-                 y = injuries,
-                 main = "Injuries by Weather Event", 
-                 xlab = "Weather Event Type",
-                 ylab = "Injuries")) +
+             injuries = 0)                  
+for(evCl in sumInj$eventclass){             ## Originally written to use the
+  sumInj[sumInj$eventclass == evCl,         ## dpyr::summarise(group_by())
+         ]$injuries <-                      ## phrasing, software update
+    sum(stormDat[stormDat$eventclass == evCl,  ## dependencies disabled this
+                 ]$injuries)                ## function during development. The
+}                                           ## for() loop is much slower, and
+sumInj <- sumInj[order(sumInj$injuries,     ## should be replaced, but produces
+                 decreasing = TRUE), ][1:6, ]  ## the same results.
+P1 <- ggplot(sumInj,                        ## ggplot2 graphics, simple box 
+             aes(x = eventclass,            ## plot.
+                 y = injuries)) +
       geom_boxplot() +
+      ggtitle("Injuries by Weather Event") +
+      xlab("Weather Event Type") +
+      ylab("Injuries") +
+      scale_y_continuous(limits=range(sumInj$injuries)) +
       scale_x_discrete(limits=sumInj$eventclass) +
-      theme_bw(base_size = 12) +
-      theme(axis.text.x = element_text(angle = 20, hjust = 1)) 
-##----------------------------------------------------------------------------##
-sumFatal <- 
-  data.frame(eventclass = unique(
+      theme_bw(base_size = 10) +
+      theme(axis.text.x = element_text(angle = 25, 
+                                       hjust = 1)) 
+sumFatal <-                                 ## Small data frame containing 
+  data.frame(eventclass = unique(           ## deaths by event type.
                             stormDat[stormDat$fatalities >= 1,
                                      ]$eventclass), 
              fatalities = 0)
@@ -797,18 +826,18 @@ sumFatal <- sumFatal[order(sumFatal$fatalities,
                      decreasing = TRUE), ][1:6, ]
 P2 <- ggplot(sumFatal, 
              aes(x = eventclass, 
-                 y = fatalities,
-                 main = "Fatalities by Weather Event")) +
-      geom_boxplot(aes(xlab = "Weather Event Type",
-                       ylab = "Injuries")) +
+                 y = fatalities)) +
+      geom_boxplot() +
+      ggtitle("Fatalities by Weather Event") +
+      xlab("Weather Event Type") + 
+      ylab("Fatalities") +
       scale_x_discrete(limits=sumFatal$eventclass) +
-      theme_bw(base_size = 12) +
-      theme(axis.text.x = element_text(angle = 20, 
+      theme_bw(base_size = 10) +
+      theme(axis.text.x = element_text(angle = 25, 
                                        hjust = 1))
-##----------------------------------------------------------------------------##
-sumInj92 <- 
-  data.frame(
-    eventclass=unique(
+sumInj92 <-                                 ## Similar to injury dataframe. 
+  data.frame(                               ## above, but discards all data 
+    eventclass=unique(                      ## observations before 1992.
         stormDat[stormDat$injuries >= 1 &
         stormDat$begindate >= 
           as.Date("1992-01-01"),
@@ -826,19 +855,18 @@ sumInj92 <-
            decreasing = TRUE), ][1:6, ]
 
 P3 <- ggplot(sumInj92, 
-             aes(x = eventclass, y = injuries92,
-                 main = "Injuries by Weather Event",
-                 sub = "since 1992",
-                 xlab = "Weather Event Type",
-                 ylab = "Injuries")) +
+             aes(x = eventclass, 
+                 y = injuries92)) +
       geom_boxplot() +
+      ggtitle("Injuries by Weather Event since 1992") +
+      xlab("Weather Event Type") +
+      ylab("Injuries") +
       scale_x_discrete(limits=sumInj92$eventclass) +
-      theme_bw(base_size = 12) +
-      theme(axis.text.x = element_text(angle = 20, 
+      theme_bw(base_size = 10) +
+      theme(axis.text.x = element_text(angle = 25, 
                                        hjust = 1)) 
-##----------------------------------------------------------------------------##
-sumFatal92 <- 
-  data.frame(
+sumFatal92 <-                               ## Data frame contains deaths since
+  data.frame(                               ## 1992 by event type.
     eventclass = unique(
       stormDat[stormDat$fatalities >= 1 &
       stormDat$begindate >= 
@@ -853,17 +881,15 @@ for(evCl in sumFatal92$eventclass) {
 sumFatal92 <- 
   sumFatal92[order(sumFatal92$fatalities92, 
                    decreasing = TRUE), ][1:6, ]
-P4 <- ggplot(sumFatal92, 
-             aes(x = eventclass, 
-                 y = fatalities92,
-                 main = "Fatalities by Weather Event",
-                 sub = "since 1992",
-                 xlab = "Weather Event Type",
-                 ylab = "Fatalities")) +
+P4 <- ggplot(sumFatal92, aes(x = eventclass, 
+                             y = fatalities92)) +
       geom_boxplot() +
+      ggtitle("Fatalities by Weather Event since 1992") +
+      xlab("Weather Event Type") + 
+      ylab("Fatalities") +
       scale_x_discrete(limits=sumFatal92$eventclass) +
-      theme_bw(base_size = 12) +
-      theme(axis.text.x = element_text(angle = 20, 
+      theme_bw(base_size = 10) +
+      theme(axis.text.x = element_text(angle = 25, 
                                        hjust = 1))
 ```
 Top 3 number of injuries caused by weather events for all database entries are 
@@ -890,24 +916,31 @@ gathered since 1992.
 ```r
 mutate(sumFatal[1:3, ],
        eventsSince92 = sumFatal92[1:3, ]$eventclass, 
-       fatalitiesSince92sumFatal92[1:3, ]$fatalities)
+       fatalitiesSince92 = sumFatal92[1:3, ]$fatalities)
 ```
 
 ```
-     eventclass fatalities eventsSince92
-1       TORNADO       5636  EXTREME HEAT
-20 EXTREME HEAT       2016       TORNADO
-13  FLASH FLOOD       1035   FLASH FLOOD
+     eventclass fatalities eventsSince92 fatalitiesSince92
+1       TORNADO       5636  EXTREME HEAT              2016
+20 EXTREME HEAT       2016       TORNADO              1663
+13  FLASH FLOOD       1035   FLASH FLOOD              1035
 ```
     
-####Conclusions for question #1.    
+### Question 1 Conclusions        
 
 
 ```r
-multiplot(P1, P2, P3, P4, cols = 2)           ## multipane plots to screen      
+multiplot(P1, P2, P3, P4, cols = 2)           ## multipane plots to screen 
 ```
 
 ![](PA2_Assignment_files/figure-html/multiPlot-1.png) 
+
+#### Figure 1 Injuries and Deaths from Weather Events Plots    
+
+```(r plot1Write, echo = FALSE, cache = TRUE }
+dev.copy(png, width = 720, height = 720, file = "multiPlot-1.png")
+dev.off()
+```     
 
 Prior to 1992, with the greater period of reporting concentrated only of 
 reports only on tornado events, it is perhaps not surprising that tornadoes 
@@ -923,12 +956,12 @@ from extreme heat are now rated third.
 
 Compared to the full-range of observations, since 1992, the order of the first 
 and second weather event causes of death are reversed: extreme heat-related 
-deaths replaced tornadoes as the leading cause.  Flash flood deaths remain the 
-third greatest after pre-1992 data are removed.    
+fatalities replaced tornadoes as the leading cause.  Flash flood deaths remain  
+the third greatest after pre-1992 data are removed.    
 
 
 
-####Question \#2.     
+### Question 2 Analysis     
 
 2.  _Across the United States, which types of events have the greatest economic 
 consequences?_    
@@ -960,7 +993,7 @@ unique(stormDat$cropdamageexp)              ## Show the crop exponent variable
 Levels:  ? 0 2 B k K m M
 ```
 
-##### Additional data processing:    
+#### Additional Data Processing:    
 
 Per the documentation from the NWS web site, letters h, k, m, b (upper and 
 lower case) represent hundreds, thousands, millions, and billions, 
@@ -1013,57 +1046,81 @@ three highest.
 
 
 ```r
+costDat <-                                  ## Temp data frame contains some
+  data.frame(eventclass =                   ## filtered data. Multiplies dollar
+               stormDat$eventclass,         ## value by the modified exponent.
+             propDamage = 
+               (as.numeric(stormDat$propertydamage) *  
+              (10^as.numeric(stormDat$propertydamageexp))))  
 costDat <- 
-  data.frame(eventclass = stormDat$eventclass,
-             propDamage = (as.numeric(stormDat$propertydamage) *
-                          (10^as.numeric(stormDat$propertydamageexp))))
-costDat <- costDat[costDat$propDamage >= 1, ]
-propDat <- data.frame(eventclass = unique(costDat$eventclass),
-                      propDamage = 0)
-for(dmgN in propDat$eventclass){
-  propDat[propDat$eventclass == dmgN, ]$propDamage <- 
-    formatC(mean(costDat[costDat$eventclass == dmgN, ]$propDamage)/(10^9),
-            width = 8,
-            digits = 2,
+  costDat[costDat$propDamage >= 1, ]        ## Removes 0 value observations.
+propDat <-                                  ## Data frame will store averages
+  data.frame(eventclass =                   ## of property damage by event type.
+               unique(costDat$eventclass),
+             propDamage = 0)
+for(dmgN in propDat$eventclass){            ## Originally written for dplyr::
+  propDat[propDat$eventclass ==             ## summarise(group_by()), this 
+            dmgN, ]$propDamage <-           ## sectoion was rewritten with slow
+    formatC(                                ## for() loop to provide the same
+      mean(                                 ## output.  See explanation at P1,
+        costDat[costDat$eventclass ==       ## comments, above.
+                  dmgN, ]$propDamage)/(10^9),  ## Crop out to the $ billions  
+            width = 8,                      ## for reporting (reverse exponent 
+            digits = 2,                     ## to common magnitude).
             format = "f")
 }
-propDat <- propDat[order(propDat$propDamage, 
-                         decreasing = TRUE), ][1:6, ]
-P5 <- ggplot(propDat, 
-             aes(x = eventclass, y = propDamage,
-                 main = "Property Damage by Weather Event")) +
-      geom_boxplot( aes(xlab = "Weather Event Type",
-                        ylab = "PropertyDamage")) +
+propDat <- propDat[order(                   ## Sort then discard unused data
+                     propDat$propDamage, 
+                     decreasing = TRUE), ][1:6, ]
+P5 <- ggplot(propDat, aes(x = eventclass,   ## ggplot 2
+                          y = propDamage)) +
+      geom_boxplot() + 
+      ggtitle("Property Damage by Weather Event") +
+      xlab("Weather Event Type") +
+      ylab("Property Damage ($ billions)") +
       scale_x_discrete(limits=propDat$eventclass) +
-      theme_bw(base_size = 12) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
-costDat <- data.frame(eventclass = stormDat$eventclass,
-                      cropDamage = (as.numeric(stormDat$cropdamage) *
-                                   (10^as.numeric(stormDat$cropdamageexp))))
-costDat <- costDat[costDat$cropDamage >= 1, ]
-cropDat <- data.frame(eventclass = unique(costDat$eventclass),
-                      cropDamage = 0)
-for(dmgN in cropDat$eventclass){
-  cropDat[cropDat$eventclass == dmgN, ]$cropDamage <- 
-    formatC(mean(costDat[costDat$eventclass == dmgN, ]$cropDamage)/(10^3),
-            width = 8,
-            digits = 2,
-            format = "f")
+      theme_bw(base_size = 10) +
+      theme(axis.text.x = element_text(angle = 60, 
+                                       hjust = 1))
+costDat <-                                  ## Reuse temp data frame for crop
+  data.frame(eventclass =                   ## damage losses. Multiply by expo-
+               stormDat$eventclass,         ## nent.
+             cropDamage = 
+               (as.numeric(stormDat$cropdamage) *
+               (10^as.numeric(stormDat$cropdamageexp))))
+costDat <-                                  ## Strip out 0 value observations.
+  costDat[costDat$cropDamage >= 1, ]
+cropDat <-                                  ## Build data frame to hold average
+  data.frame(eventclass =                   ## damage by event.
+               unique(costDat$eventclass),
+            cropDamage = 0)
+for(dmgN in cropDat$eventclass){            ## For loop to replace summarise(  
+  cropDat[cropDat$eventclass ==             ## group_by()), as above.
+          dmgN, ]$cropDamage <-             
+                    formatC(
+                      mean(                 ## Crop down to $ millions
+                        costDat[costDat$eventclass == 
+                                  dmgN, ]$cropDamage)/(10^6),
+                      width = 8,
+                      digits = 2,
+                      format = "f")
 }
-cropDat <- cropDat[order(cropDat$cropDamage, 
+cropDat <- cropDat[order(cropDat$cropDamage, ## discard unused observations.
                          decreasing = TRUE), ][1:6, ]
-P6 <- ggplot(cropDat, aes(x = eventclass, y = cropDamage,
-                          main = "Crop Damage by Weather Event")) +
-      geom_boxplot( aes(xlab = "Weather Event Type",
-                        ylab = "CropDamage")) +
+P6 <- ggplot(cropDat, aes(x = eventclass, 
+                          y = cropDamage)) +
+      geom_boxplot() + 
+      ggtitle("Crop Damage by Weather Event") +
+      xlab("Weather Event Type") +
+      ylab("CropDamage ($ millions)") +
       scale_x_discrete(limits=cropDat$eventclass) +
-      theme_bw(base_size = 12) +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      theme_bw(base_size = 10) +
+      theme(axis.text.x = element_text(angle = 60, hjust = 1))
 ```
-The top 6 causes of property damage listed:
+The top 3 causes of property damage listed:
 
 ```r
-propDat
+propDat[1:3, ]
 ```
 
 ```
@@ -1071,28 +1128,26 @@ propDat
 91        HEAVY RAIN SEVERE WEATHER       2.50
 58 TORNADOES THUNDERSTORM WIND HAIL       1.60
 5                 HURRICANE TYPHOON       0.41
-57                      STORM SURGE       0.25
-45              SEVERE THUNDERSTORM       0.15
-3                HURRICANE TYPHOONS       0.10
 ```
 
-The top 6 causes of crop damage are:
+The top 3 causes of crop damage are:
 
 
 ```r
-cropDat
+cropDat[1:3, ]
 ```
 
 ```
                 eventclass cropDamage
-53            EXTREME HEAT    1658.67
-35   EXTREME PRECIPITATION    1420.00
-34 COLD AND WET CONDITIONS     660.00
-28         DAMAGING FREEZE     618.20
-33                 DROUGHT     582.10
-3        HURRICANE TYPHOON     526.39
+53            EXTREME HEAT       1.66
+35   EXTREME PRECIPITATION       1.42
+34 COLD AND WET CONDITIONS       0.66
 ```
-Panel plot the top property and crop damage-causing weather events.  
+
+### Question 2 Conclusions        
+
+
+Panel plot of the top property and crop damage-causing weather events.    
 
 
 ```r
@@ -1101,31 +1156,39 @@ multiplot(P5, P6, cols = 2)
 
 ![](PA2_Assignment_files/figure-html/plotPropCropDmg-1.png) 
 
+#### Figure 2 Crop and Property Damage Plots    
+
+
+```(r plot2Write, echo = FALSE, cache = TRUE }
+dev.copy(png, width = 720, height = 720, file = "plotPropCropDmg-1.png" )
+dev.off()
+```     
 
 Since the average per type of event is taken, unlike the analysis of 
-question #1, we do not recompute for observations since 1992.    
-
-####Conclusions for question #2.    
+question #1, we do not recompute for observations since 1992.  In initial
+analysis, we determined that changing the number and skew of the sample set 
+does not alter the final results.  
 
 Per event, using all data collections since 1951, the greatest property damage 
 is caused by events that combine heavy rain with severe weather.  This multiple-
 event classification does not follow current NWS guidelines or definitions for 
-identification of an event type.  It is also possible that this event could be 
-combined with others if standard reporting methods were used.    
+identification of an event type.  It is possible that this event could be 
+combined with others, or split into several observations, if modern standard 
+reporting methods were applied.    
 
 The event causing the second greatest property damage is also a combined event:
-tornadoes, thunderstorms, wind and hail.  Readers should noted that following 
-the 2007 operating instruction, these should not be classified as a single 
-event, but reported separately, which would no doubt modify the result.    
+tornadoes, thunderstorms, wind and hail.  Readers should again note that 
+following the NWS 2007 operating instruction, these should not be classified as 
+a single event, but reported separately, which would no doubt modify the result.    
 
 It is possible that further analysis would cause analysts to combine damages for 
 this second classification, the first classification, and those multiple-event/
-thunderstorm systmes that we have said should be classified by their remarks. 
+thunderstorm systems that we have said should be classified by their remarks. 
 Additionally, as combination events many of the summary reports for Oklahoma and 
 Texas thunderstorm systems (event class modified to "see remarks," in our data 
 processing, above) could be added to these observations. We estimate that these 
-additions would increase the dollar value for the event, making it even more 
-distinctly the greatest cause.   
+additions would increase the dollar value for the event, making the first event
+type even more distinctly the greatest cause.   
 
 Hurricanes/typhoons accounted for the type of events that cause the third 
 greatest amount of property damage.    
@@ -1136,13 +1199,14 @@ Second greatest cause of damage is "extreme precipitation" causing an average
 pf $1.4 Million.  "Cold and wet conditions" rate third, causing an average of 
 $660 thousand.  
 
-For crop damage, further study and classification of the NWS weather might allow 
-for modification of the results above.  For instance, we suspect that "extreme 
-heat" and "drought" (rated 4th at $618K) might be combined, and that "extreme
-precipitation" and various kinds of flood events, each of which were rated 
-outside the top 6 margin, might be combined under the NWS standards.
+For crop damage, further study and classification of the NWS weather type/
+classification might allow for modification of the results above.  For instance, 
+we suspect that "extreme heat" and "drought" (rated 4th at $618K) might be 
+combined, and that "extreme precipitation" and various kinds of flood events, 
+each of which were rated outside the top 6 margin, might be combined under the 
+NWS standards.
 
-###Results        
+## Results        
 
 Since the database was originally oriented to collections for tornado events, it
 is perhaps not surprising that tornadoes and tornadic weather systems are among 
@@ -1154,15 +1218,15 @@ considered.  Likewise, the difference between the first and subsequent causes of
 property and crop damage are very high, although most of the top causes could be
 classified as tornadic weather events.     
 
-Despite expending a great deal of effort (approx 30% sloc) to normalize weather
-event classification to a common set of standardized terms, the events leading 
-to the greatest crop and property damage were combined types that do not 
-apparently meet the NWS 2007 guidelines. While refinement and expansion of the 
-data to common standards would provide more specific and precise results, it is 
-clearly not needed to determine these results. The significantly greater 
-damage and injuries from tornadoes and tornado-like weather systems clearly 
-indicate that policies and programs for detection, reporting, protection from, 
-and mitigation of these events would make the greatest contribution to public 
-safety.    
+Despite expending a great deal of effort (approx 30% of all lines, ~ 50% of R 
+sloc) to normalize weather event classification to a common set of standardized 
+terms, the events leading to the greatest crop and property damage were combined 
+types that do not apparently meet the NWS 2007 reporting guidelines. While 
+refinement and expansion of the data to common standards would provide more 
+specific and precise results, it is clearly not needed to determine these 
+results. The significantly greater damage and injuries from tornadoes and 
+tornado-like weather systems clearly indicate that policies and programs for 
+detection, reporting, protection from, and mitigation of these events would make 
+the greatest contribution to public safety.    
 
 
